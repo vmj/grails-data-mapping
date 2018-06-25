@@ -6,6 +6,7 @@ import grails.gorm.transactions.TransactionService
 import grails.gorm.transactions.Transactional
 import org.codehaus.groovy.control.MultipleCompilationErrorsException
 import org.grails.datastore.gorm.services.Implemented
+import org.grails.datastore.gorm.services.implementers.FindAllByInterfaceProjectionImplementer
 import org.grails.datastore.gorm.services.implementers.FindAllImplementer
 import org.grails.datastore.gorm.services.implementers.FindOneImplementer
 import org.grails.datastore.gorm.services.implementers.FindOneInterfaceProjectionImplementer
@@ -133,6 +134,73 @@ class ServiceTransformSpec extends Specification {
 
         and:
         impl.getMethod("getBlogPost", String).getAnnotation(Implemented).by() == FindOneInterfaceProjectionImplementer
+    }
+
+    void "test interface projection with ID"() {
+        when:
+        def klass = new GroovyClassLoader().parseClass("""
+            import grails.gorm.services.Service
+            import grails.gorm.annotation.Entity
+            import org.grails.datastore.gorm.GormEntity
+            
+            @Entity
+            class Bottle implements GormEntity<Bottle> {
+                String color
+            }
+            
+            interface BottleId {
+                Long getId()
+            }
+            
+            @Service(Bottle)
+            interface BottleService {
+                List<BottleId> findByColor(String color)
+            }
+        """.stripIndent())
+
+        then:
+        noExceptionThrown()
+
+        and:
+        def impl = klass.classLoader.loadClass("\$BottleServiceImplementation")
+        impl != null
+
+        and:
+        impl.getMethod("findByColor", String).getAnnotation(Implemented).by() == FindAllByInterfaceProjectionImplementer
+    }
+
+
+    void "test interface projection with version"() {
+        when:
+        def klass = new GroovyClassLoader().parseClass("""
+            import grails.gorm.services.Service
+            import grails.gorm.annotation.Entity
+            import org.grails.datastore.gorm.GormEntity
+            
+            @Entity
+            class Bottle implements GormEntity<Bottle> {
+                String color
+            }
+            
+            interface BottleVersion {
+                Long getVersion()
+            }
+            
+            @Service(Bottle)
+            interface BottleService {
+                List<BottleVersion> findByColor(String color)
+            }
+        """.stripIndent())
+
+        then:
+        noExceptionThrown()
+
+        and:
+        def impl = klass.classLoader.loadClass("\$BottleServiceImplementation")
+        impl != null
+
+        and:
+        impl.getMethod("findByColor", String).getAnnotation(Implemented).by() == FindAllByInterfaceProjectionImplementer
     }
 
     void "test service transformation with @CurrentTenant"() {
